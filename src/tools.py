@@ -1,144 +1,134 @@
-import os
+"""Tools used by the nutrition assistant.
+
+The bundled CSV is a recipe-review dataset, not a nutrition database.  These
+tools therefore use the columns that actually exist and clearly say when a
+nutrition value cannot be calculated from the available data.
+"""
+
+from pathlib import Path
+
 import pandas as pd
 from langchain.tools import tool
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_PATH = os.path.join(BASE_DIR,"data", "recipes.csv")
-
+BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_PATH = BASE_DIR / "data" / "recipes.csv"
 DF = pd.read_csv(DATA_PATH)
 
-def get_col(possible_names: list) -> str:
-    """Helper function to find the exact column name regardless of casing/naming variations."""
-    for col in DF.columns:
-        if col.strip().lower() in [p.lower() for p in possible_names]:
-            return col
-    return possible_names[0]
+COL_NAME = "recipe_name" if "recipe_name" in DF.columns else None
+COL_TEXT = "text" if "text" in DF.columns else None
+COL_STARS = "stars" if "stars" in DF.columns else None
+NUTRITION_COLUMNS = {"Calories", "ProteinContent", "FatContent", "CarbohydrateContent"}
+HAS_NUTRITION_DATA = NUTRITION_COLUMNS.issubset(DF.columns)
 
-# Automatically detect dataset column names dynamically
-COL_NAME = get_col(['Name', 'recipe_name', 'title', 'RecipeName'])
-COL_ING = get_col(['Ingredients', 'ingredients', 'recipe_ingredients', 'RecipeIngredients'])
-COL_CAL = get_col(['Calories', 'calories', 'cal', 'CaloriesKcal'])
-COL_PRO = get_col(['ProteinContent', 'protein', 'Protein', 'protein_g'])
-COL_FAT = get_col(['FatContent', 'fat', 'Fat', 'fat_g'])
-COL_CARB = get_col(['CarbohydrateContent', 'carbs', 'Carbohydrates', 'carbohydrates_g'])
+
+def _require_recipe_names() -> str | None:
+    if COL_NAME is None:
+        return "The loaded dataset has no recipe_name column."
+    return None
+
 
 @tool
 def calculate_water_target(weight_kg: float) -> str:
-    """Calculates recommended daily water intake based on weight in kilograms."""
-    # Standard hydration formula: ~35ml per kg of body weight
-    liters = (weight_kg * 35) / 1000
-    return f"Recommended Daily Water Intake: {liters:.2f} Liters ({int(liters * 1000)} ml)"
+    """Calculate a general daily water target from body weight in kilograms."""
+    if weight_kg <= 0:
+        return "Weight must be greater than zero."
+    liters = weight_kg * 0.035
+    return f"General daily water target: {liters:.2f} L ({round(liters * 1000)} ml)."
 
 
 @tool
 def load_dataset_summary() -> str:
-    """Returns a summary of the available recipe dataset including total count and column attributes."""
-    return f"Dataset loaded with {len(DF)} recipes. Columns: {', '.join(DF.columns)}"
+    """Describe the recipe dataset available to the assistant."""
+    recipes = DF[COL_NAME].nunique() if COL_NAME else 0
+    return (
+        f"Dataset contains {len(DF)} reviews for {recipes} recipes. "
+        f"Nutrition values available: {'yes' if HAS_NUTRITION_DATA else 'no'}. "
+        f"Columns: {', '.join(DF.columns)}"
+    )
 
 
 @tool
 def recipe_search_by_ingredient(ingredients: str) -> str:
-    """Searches for recipes containing specific comma-separated ingredients."""
-    if COL_ING not in DF.columns:
-        return f"Error: Ingredients column '{COL_ING}' not found in dataset."
-        
-    ing_list = [i.strip().lower() for i in ingredients.split(",")]
-    
-    matches = DF[DF[COL_ING].astype(str).str.lower().apply(lambda x: all(i in x for i in ing_list))]
-    
+    """Find recipe names whose titles or review text mention all comma-separated search terms."""
+    error = _require_recipe_names()
+    if error:
+        return error
+    terms = [term.strip().lower() for term in ingredients.split(",") if term.strip()]
+    if not terms:
+        return "Provide at least one ingredient or search term."
+
+    searchable = DF[COL_NAME].fillna("").str.lower()
+    if COL_TEXT:
+        searchable = searchable + " " + DF[COL_TEXT].fillna("").str.lower()
+    matches = DF[searchable.map(lambda value: all(term in value for term in terms))]
     if matches.empty:
-        return "No recipes found matching all specified ingredients."
-        
-    cols_to_show = [c for c in [COL_NAME, COL_CAL, COL_PRO, COL_ING] if c in DF.columns]
-    results = matches[cols_to_show].head(5)
-    return results.to_string(index=False)
+        return "No recipes or reviews matched all specified terms."
+
+    result = matches.groupby(COL_NAME, dropna=True).size().sort_values(ascending=False).head(5)
+    return "Matching recipes (number of reviews):\n" + "\n".join(
+        f"- {name}: {count}" for name, count in result.items()
+    )
 
 
 @tool
 def filter_by_macros(max_calories: float, min_protein: float) -> str:
-    """Filters recipes by maximum calories and minimum protein in grams."""
-    if COL_CAL not in DF.columns or COL_PRO not in DF.columns:
-        return "Error: Required calorie or protein columns not found in dataset."
-
-    filtered = DF[(DF[COL_CAL] <= max_calories) & (DF[COL_PRO] >= min_protein)]
-    if filtered.empty:
-        return f"No recipes found with <= {max_calories} cal and >= {min_protein}g protein."
-        
-    cols_to_show = [c for c in [COL_NAME, COL_CAL, COL_PRO, COL_FAT, COL_CARB] if c in DF.columns]
-    return filtered[cols_to_show].head(5).to_string(index=False)
+    """Filter recipes by calories and protein when the loaded dataset includes nutrition data."""
+    if not HAS_NUTRITION_DATA:
+        return "Cannot filter by macros: the bundled CSV contains recipe reviews, not calories or protein values."
+    filtered = DF[(DF["Calories"] <= max_calories) & (DF["ProteinContent"] >= min_protein)]
+    return filtered[[COL_NAME, "Calories", "ProteinContent", "FatContent", "CarbohydrateContent"]].head(5).to_string(index=False)
 
 
 @tool
 def nutrition_analysis(recipe_name: str) -> str:
-    """Provides detailed nutritional breakdown (calories, protein, fat, carbs) for a given recipe name."""
-    if COL_NAME not in DF.columns:
-        return "Error: Recipe name column not found in dataset."
-
-    match = DF[DF[COL_NAME].astype(str).str.lower() == recipe_name.lower()]
-    if match.empty:
-        return f"Recipe '{recipe_name}' not found."
-        
-    row = match.iloc[0]
-    
-    cal = row[COL_CAL] if COL_CAL in DF.columns else "N/A"
-    pro = row[COL_PRO] if COL_PRO in DF.columns else "N/A"
-    fat = row[COL_FAT] if COL_FAT in DF.columns else "N/A"
-    carb = row[COL_CARB] if COL_CARB in DF.columns else "N/A"
-    
-    return f"Nutritional Info for {row[COL_NAME]}:\n- Calories: {cal} kcal\n- Protein: {pro}g\n- Fat: {fat}g\n- Carbs: {carb}g"
+    """Return nutrition values when present, otherwise summarize ratings and reviews for a recipe."""
+    error = _require_recipe_names()
+    if error:
+        return error
+    matches = DF[DF[COL_NAME].fillna("").str.casefold() == recipe_name.casefold()]
+    if matches.empty:
+        return f"Recipe '{recipe_name}' was not found."
+    name = matches.iloc[0][COL_NAME]
+    if HAS_NUTRITION_DATA:
+        row = matches.iloc[0]
+        return (f"Nutritional info for {name}:\n- Calories: {row['Calories']} kcal\n"
+                f"- Protein: {row['ProteinContent']} g\n- Fat: {row['FatContent']} g\n"
+                f"- Carbs: {row['CarbohydrateContent']} g")
+    rating = f" Average rating: {matches[COL_STARS].mean():.1f}/5." if COL_STARS else ""
+    return f"{name} has {len(matches)} review(s).{rating} Nutrition values are not available in this dataset."
 
 
 @tool
 def generate_shopping_list(recipes_or_ingredients: str) -> str:
-    """Generates a consolidated, categorized shopping list based on a list of recipes or ingredients provided as text."""
-    if not recipes_or_ingredients:
-        return "No ingredients provided to generate a shopping list."
-        
-    # Clean up and deduplicate ingredients
-    items = [item.strip("- *").title() for item in recipes_or_ingredients.split("\n") if item.strip()]
-    unique_items = sorted(list(set(items)))
-    
-    formatted_list = ["### 🛒 Consolidated Shopping List"]
-    for item in unique_items:
-        formatted_list.append(f"* {item}")
-        
-    return "\n".join(formatted_list)
+    """Format newline- or comma-separated ingredients as a deduplicated shopping list."""
+    items = [item.strip(" -•*\t").title() for item in recipes_or_ingredients.replace(",", "\n").splitlines()]
+    items = sorted({item for item in items if item})
+    if not items:
+        return "No ingredients were provided."
+    return "### Shopping List\n" + "\n".join(f"- {item}" for item in items)
 
 
 @tool
 def calculate_bmi(weight_kg: float, height_cm: float) -> str:
-    """Calculates BMI and returns health category with recommended calorie targets."""
-    height_m = height_cm / 100
-    bmi = round(weight_kg / (height_m ** 2), 2)
+    """Calculate BMI from weight in kilograms and height in centimetres."""
+    if weight_kg <= 0 or height_cm <= 0:
+        return "Weight and height must be greater than zero."
+    bmi = round(weight_kg / (height_cm / 100) ** 2, 1)
     category = "Underweight" if bmi < 18.5 else "Normal" if bmi < 25 else "Overweight" if bmi < 30 else "Obese"
-    return f"BMI: {bmi} ({category}). Recommended daily intake target: {'2200-2500' if category == 'Underweight' else '2000' if category == 'Normal' else '1500-1800'} kcal."
+    return f"BMI: {bmi} ({category}). This is a screening measure, not a diagnosis."
 
 
 @tool
 def generate_weekly_meal_plan(target_calories: float) -> str:
-    """Generates a 7-day meal plan based on target daily calorie intake."""
-    if COL_CAL not in DF.columns or COL_NAME not in DF.columns:
-        return "Error: Required columns missing for meal plan generation."
-
-    daily_target = target_calories / 3  # roughly split into 3 meals
-    sample_meals = DF[DF[COL_CAL] <= daily_target]
-    
-    if len(sample_meals) < 7:
-        return "Not enough low-calorie recipes in the dataset to generate a full weekly plan."
-        
-    sampled = sample_meals.sample(min(21, len(sample_meals)))
-    
-    plan = []
+    """Generate a seven-day recipe rotation; calorie matching requires nutrition data."""
+    error = _require_recipe_names()
+    if error:
+        return error
+    names = DF[COL_NAME].dropna().drop_duplicates().head(7).tolist()
+    if len(names) < 7:
+        return "Not enough distinct recipe names to make a weekly rotation."
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    meal_types = ["Breakfast", "Lunch", "Dinner"]
-    
-    idx = 0
-    for day in days:
-        plan.append(f"\n--- {day} ---")
-        for m in meal_types:
-            if idx < len(sampled):
-                row = sampled.iloc[idx]
-                pro_val = f", {row[COL_PRO]}g protein" if COL_PRO in DF.columns else ""
-                plan.append(f"{m}: {row[COL_NAME]} ({row[COL_CAL]} kcal{pro_val})")
-                idx += 1
-    return "\n".join(plan)
+    note = " Calorie totals cannot be verified because the dataset has no nutrition values." if not HAS_NUTRITION_DATA else ""
+    return "Weekly recipe rotation:" + note + "\n" + "\n".join(
+        f"- {day}: {name}" for day, name in zip(days, names)
+    )

@@ -18,9 +18,9 @@ st.write("Your personal AI assistant for diet planning, recipe recommendations, 
 
 # Robust regex parser matching any variation of Protein, Carbs, Fat in LLM text
 def extract_macros(text: str):
-    protein_match = re.search(r'Protein:?\s*\*?\*?\s*~?(\d+(?:\.\d+)?)g', text, re.IGNORECASE)
-    carbs_match = re.search(r'Carb[s|ohydrates]*:?\s*\*?\*?\s*~?(\d+(?:\.\d+)?)g', text, re.IGNORECASE)
-    fat_match = re.search(r'Fat[s]*:?\s*\*?\*?\s*~?(\d+(?:\.\d+)?)g', text, re.IGNORECASE)
+    protein_match = re.search(r'\*{0,2}Protein\*{0,2}\s*:?\s*~?(\d+(?:\.\d+)?)\s*g', text, re.IGNORECASE)
+    carbs_match = re.search(r'\*{0,2}(?:Carbs?|Carbohydrates)\*{0,2}\s*:?\s*~?(\d+(?:\.\d+)?)\s*g', text, re.IGNORECASE)
+    fat_match = re.search(r'\*{0,2}Fats?\*{0,2}\s*:?\s*~?(\d+(?:\.\d+)?)\s*g', text, re.IGNORECASE)
 
     if protein_match and carbs_match and fat_match:
         return {
@@ -135,7 +135,11 @@ with st.sidebar:
     # 🍕 MACRO PIE CHART SECTION END
     # =========================================================================
 
-agent_executor = get_nutrition_agent()
+try:
+    agent_executor = get_nutrition_agent()
+except ValueError as error:
+    agent_executor = None
+    st.warning(f"AI assistant unavailable: {error}")
 
 # Render historic messages
 for msg in st.session_state.messages:
@@ -153,6 +157,11 @@ if user_input := st.chat_input("Ask for recipes, weekly plans, or macro advice..
         
     with st.chat_message("assistant"):
         with st.spinner("Analyzing and querying tools..."):
+            if agent_executor is None:
+                output = "Add a valid `GROQ_API_KEY` to `.env`, then restart the app to enable AI responses."
+                st.markdown(output)
+                st.session_state.messages.append({"role": "assistant", "content": output})
+                st.stop()
             chat_history = []
             for msg in st.session_state.messages[:-1]:
                 if msg["role"] == "user":
