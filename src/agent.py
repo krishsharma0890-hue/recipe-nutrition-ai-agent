@@ -42,7 +42,7 @@ def build_nutrition_agent():
         )
 
     llm = ChatGroq(
-        model_name="llama-3.3-70b-versatile",
+        model_name="llama-3.1-8b-instant",
         temperature=0,
         groq_api_key=api_key,
     )
