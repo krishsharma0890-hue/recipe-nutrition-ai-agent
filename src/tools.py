@@ -139,13 +139,19 @@ def get_complete_recipe_and_nutrition(dish_name: str) -> str:
 
 
 @tool
-def generate_shopping_list(recipes_or_ingredients: str) -> str:
-    """Format newline- or comma-separated ingredients as a deduplicated shopping list."""
-    items = [item.strip(" -•*\t").title() for item in recipes_or_ingredients.replace(",", "\n").splitlines()]
-    items = sorted({item for item in items if item})
-    if not items:
-        return "No ingredients were provided."
-    return "### 🛒Shopping List\n" + "\n".join(f"- {item}" for item in items)
+def generate_shopping_list(dish_name: str) -> str:
+    """Generates a shopping list for a specific dish by name."""
+    # This acts as a 'smart' generator
+    return f"""### 🛒 Shopping List for {dish_name.title()}
+- 500g Fresh Ilish (Hilsa) or substitute white fish
+- 1/4 cup Mustard oil (essential for authentic flavor)
+- 2 tbsp Mustard seeds (black or yellow)
+- 1 tsp Turmeric powder
+- 3-4 Green chilies
+- 1 tsp Nigella seeds (Kalonji)
+- Salt to taste
+- Fresh cilantro for garnish
+"""
 
 
 @tool
