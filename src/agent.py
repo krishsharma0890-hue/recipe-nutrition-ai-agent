@@ -10,14 +10,14 @@ from langchain_groq import ChatGroq
 from src.prompt import get_agent_prompt
 from src.tools import (
     calculate_water_target,
+    load_dataset_summary,
     recipe_search_by_ingredient,
     filter_by_macros,
-    generate_weekly_meal_plan,
+    nutrition_analysis,
+    get_complete_recipe_and_nutrition,
     generate_shopping_list,
     calculate_bmi,
-    nutrition_analysis,
-    generate_recipe_and_instructions,
-    generate_nutrition_breakdown,
+    generate_weekly_meal_plan,
 )
 
 load_dotenv()
@@ -49,14 +49,14 @@ def build_nutrition_agent():
 
     tools = [
         calculate_water_target,
+        load_dataset_summary,
         recipe_search_by_ingredient,
         filter_by_macros,
-        generate_weekly_meal_plan,
+        nutrition_analysis,
+        get_complete_recipe_and_nutrition,
         generate_shopping_list,
         calculate_bmi,
-        nutrition_analysis,
-        generate_recipe_and_instructions,
-        generate_nutrition_breakdown,
+        generate_weekly_meal_plan,
     ]
 
     prompt = get_agent_prompt()
