@@ -102,40 +102,44 @@ def nutrition_analysis(recipe_name: str) -> str:
 
 @tool
 def get_complete_recipe_and_nutrition(dish_name: str) -> str:
-    """Provide a complete recipe, detailed step-by-step cooking instructions, and an estimated whole-dish nutrition breakdown in a single step for any dish name."""
-    if not dish_name.strip():
-        return "Please provide a valid dish name."
+    """Generates a complete recipe, ingredients list, step-by-step instructions, and macro breakdown for any given dish name."""
     
-    return f"""### Complete Recipe, Instructions & Nutrition for: {dish_name.title()}
+    # Example logic to tailor specific ingredients based on the dish request
+    lower_dish = dish_name.lower()
+    
+    if "punjabi" in lower_dish or "paneer" in lower_dish:
+        main_ingredient = "250g Fresh Paneer (Cottage Cheese)"
+    elif "chicken" in lower_dish:
+        main_ingredient = "500g Chicken Breast, cubed"
+    elif "fish" in lower_dish or "ilish" in lower_dish:
+        main_ingredient = "500g Fresh Ilish (Hilsa) fish fillets"
+    else:
+        main_ingredient = "300g Tofu or mixed vegetables"
+
+    return f"""### 🍛 Recipe: {dish_name.title()}
 
 #### Ingredients:
-- 500g primary protein or main vegetable component (chopped or prepared)
-- 2 tbsp cooking oil or butter
-- 1 medium onion, finely diced
-- 3 cloves garlic, minced
-- 1 tablespoon ginger, grated
-- 1 cup crushed tomatoes or tomato puree
-- 1/2 cup heavy cream or yogurt
-- 1 tsp cumin powder
-- 1 tsp coriander powder
-- 1/2 tsp turmeric powder
-- Salt and black pepper to taste
-- Fresh cilantro or herbs for garnish
+- **{main_ingredient}**
+- 1/4 cup cooking oil or ghee
+- 1 medium onion, finely chopped
+- 2 tomatoes, pureed
+- 1 tbsp ginger-garlic paste
+- Spices: Turmeric, cumin, coriander powder, and salt to taste
+- Fresh cilantro for garnish
 
-#### Cooking Instructions:
-1. **Prep & Marination:** Clean and chop all fresh produce. If using meat or paneer, marinate with a pinch of salt, turmeric, and yogurt for 15-20 minutes.
-2. **Aromatic Base:** Heat oil or butter in a heavy-bottomed skillet or pan over medium heat. Add diced onions and sauté for 5-7 minutes until golden brown.
-3. **Spice Bloom:** Stir in the minced garlic, grated ginger, cumin, coriander, and turmeric. Cook for 1 minute until fragrant, stirring constantly to prevent burning.
-4. **Sauce Development:** Pour in the crushed tomatoes. Simmer the mixture for 8-10 minutes until the oil begins to separate slightly from the sauce.
-5. **Main Cook:** Add your primary protein or main ingredient into the pan, coating it thoroughly with the sauce. Cover and simmer on medium-low heat for 12-15 minutes until fully cooked through.
-6. **Creamy Finish:** Reduce heat to low, stir in the heavy cream (or yogurt), and simmer gently for another 2-3 minutes. Adjust salt and pepper to taste.
-7. **Serve:** Garnish with fresh chopped cilantro and serve hot with rice or flatbread.
+#### Step-by-Step Instructions:
+1. Prepare and chop all your ingredients fresh.
+2. Heat oil in a pan over medium heat and sauté the onions until golden brown.
+3. Add the ginger-garlic paste and tomato puree, cooking until oil separates from the masala.
+4. Add your main component ({main_ingredient}) along with the spices, tossing gently to coat.
+5. Cover and simmer for 10-15 minutes until fully cooked, then garnish with fresh cilantro and serve hot!
 
-### Estimated Nutrition Analysis (Whole Dish):
-- **Calories:** ~1260 kcal
-- **Protein:** ~84 g
-- **Fat:** ~54 g
-- **Carbohydrates:** ~105 g"""
+#### Estimated Nutrition Analysis (Whole Dish):
+- **Calories:** ~650 kcal
+- **Protein:** ~42 g
+- **Fat:** ~32 g
+- **Carbohydrates:** ~45 g
+"""
 
 
 @tool

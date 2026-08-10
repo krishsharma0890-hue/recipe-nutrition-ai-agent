@@ -10,6 +10,7 @@ load_dotenv()
 
 from langchain_core.messages import HumanMessage, AIMessage
 from src.agent import build_nutrition_agent
+from src.tools import get_complete_recipe_and_nutrition, generate_shopping_list
 
 st.set_page_config(page_title="Recipe & Nutrition AI Agent", page_icon="🥗", layout="wide")
 
@@ -162,19 +163,27 @@ if user_input := st.chat_input("Ask for recipes, weekly plans, or macro advice..
                 st.markdown(output)
                 st.session_state.messages.append({"role": "assistant", "content": output})
                 st.stop()
-            chat_history = []
-            for msg in st.session_state.messages[:-1]:
-                if msg["role"] == "user":
-                    chat_history.append(HumanMessage(content=msg["content"]))
-                elif msg["role"] == "assistant":
-                    chat_history.append(AIMessage(content=msg["content"]))
-
-            response = agent_executor.invoke({
-                "input": user_input,
-                "chat_history": chat_history
-            })
             
-            output = response["output"]
+            # SMART INTERCEPTOR: Differentiate shopping lists vs recipes/meal ideas cleanly
+            query_lower = user_input.lower()
+            if "shopping list" in query_lower and "recipe" not in query_lower and "breakfast" not in query_lower:
+                output = generate_shopping_list.invoke({"dish_name": user_input})
+            elif any(kw in query_lower for kw in ["recipe", "breakfast", "lunch", "dinner", "ilish", "chicken", "paneer", "curry", "pasta", "salad", "soup", "biryani", "fish"]):
+                output = get_complete_recipe_and_nutrition.invoke({"dish_name": user_input})
+            else:
+                chat_history = []
+                for msg in st.session_state.messages[:-1]:
+                    if msg["role"] == "user":
+                        chat_history.append(HumanMessage(content=msg["content"]))
+                    elif msg["role"] == "assistant":
+                        chat_history.append(AIMessage(content=msg["content"]))
+
+                response = agent_executor.invoke({
+                    "input": user_input,
+                    "chat_history": chat_history
+                })
+                output = response["output"]
+
             st.markdown(output)
             st.session_state.messages.append({"role": "assistant", "content": output})
 
