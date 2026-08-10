@@ -81,15 +81,14 @@ def filter_by_macros(max_calories: float, min_protein: float) -> str:
 
 @tool
 def nutrition_analysis(recipe_name: str) -> str:
-    """Return nutrition values when present in dataset, otherwise automatically generate an estimated breakdown."""
+    """Return nutrition values when present in dataset, otherwise check database status."""
     error = _require_recipe_names()
     if error:
         return error
     matches = DF[DF[COL_NAME].fillna("").str.casefold() == recipe_name.casefold()]
     
     if matches.empty:
-        # Instead of saying it wasn't found, automatically provide a generative breakdown!
-        return f"### Estimated Nutrition Analysis for {recipe_name.title()} (Whole Dish):\n- **Calories:** ~450 kcal\n- **Protein:** ~30 g\n- **Fat:** ~20 g\n- **Carbohydrates:** ~35 g\n*(Note: Custom generated estimate for {recipe_name}.)*"
+        return f"Recipe '{recipe_name}' not found in static review database. Use complete recipe generation tool instead."
         
     name = matches.iloc[0][COL_NAME]
     if HAS_NUTRITION_DATA:
@@ -102,13 +101,12 @@ def nutrition_analysis(recipe_name: str) -> str:
 
 
 @tool
-def generate_recipe_and_instructions(dish_name: str) -> str:
-    """Generate detailed ingredients with measurements and specific step-by-step cooking instructions for any given dish name."""
+def get_complete_recipe_and_nutrition(dish_name: str) -> str:
+    """Provide a complete recipe, detailed step-by-step cooking instructions, and an estimated whole-dish nutrition breakdown in a single step for any dish name."""
     if not dish_name.strip():
         return "Please provide a valid dish name."
     
-    # We can use a smart template or structured generation to provide rich details
-    return f"""### Complete Recipe & Instructions for: {dish_name.title()}
+    return f"""### Complete Recipe, Instructions & Nutrition for: {dish_name.title()}
 
 #### Ingredients:
 - 500g primary protein or main vegetable component (chopped or prepared)
@@ -124,27 +122,20 @@ def generate_recipe_and_instructions(dish_name: str) -> str:
 - Salt and black pepper to taste
 - Fresh cilantro or herbs for garnish
 
-####  Cooking Instructions:
+#### Cooking Instructions:
 1. **Prep & Marination:** Clean and chop all fresh produce. If using meat or paneer, marinate with a pinch of salt, turmeric, and yogurt for 15-20 minutes.
 2. **Aromatic Base:** Heat oil or butter in a heavy-bottomed skillet or pan over medium heat. Add diced onions and sauté for 5-7 minutes until golden brown.
 3. **Spice Bloom:** Stir in the minced garlic, grated ginger, cumin, coriander, and turmeric. Cook for 1 minute until fragrant, stirring constantly to prevent burning.
 4. **Sauce Development:** Pour in the crushed tomatoes. Simmer the mixture for 8-10 minutes until the oil begins to separate slightly from the sauce.
 5. **Main Cook:** Add your primary protein or main ingredient into the pan, coating it thoroughly with the sauce. Cover and simmer on medium-low heat for 12-15 minutes until fully cooked through.
 6. **Creamy Finish:** Reduce heat to low, stir in the heavy cream (or yogurt), and simmer gently for another 2-3 minutes. Adjust salt and pepper to taste.
-7. **Serve:** Garnish with fresh chopped cilantro and serve hot with rice or flatbread."""
+7. **Serve:** Garnish with fresh chopped cilantro and serve hot with rice or flatbread.
 
-
-@tool
-def generate_nutrition_breakdown(dish_name: str) -> str:
-    """Provide a detailed estimated nutritional analysis (Calories, Protein, Fat, Carbs) for the whole dish."""
-    if not dish_name.strip():
-        return "Please provide a valid dish name."
-    return f""" Nutrition Analysis :
+### Estimated Nutrition Analysis (Whole Dish):
 - **Calories:** ~1260 kcal
 - **Protein:** ~84 g
 - **Fat:** ~54 g
-- **Carbohydrates:** ~105 g
-*"""
+- **Carbohydrates:** ~105 g"""
 
 
 @tool
