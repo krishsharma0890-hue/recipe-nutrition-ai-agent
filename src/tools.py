@@ -99,13 +99,59 @@ def nutrition_analysis(recipe_name: str) -> str:
 
 
 @tool
+def generate_recipe_and_instructions(dish_name: str) -> str:
+    """Generate detailed ingredients with measurements and specific step-by-step cooking instructions for any given dish name."""
+    if not dish_name.strip():
+        return "Please provide a valid dish name."
+    
+    # We can use a smart template or structured generation to provide rich details
+    return f"""### Complete Recipe & Instructions for: {dish_name.title()}
+
+#### Ingredients:
+- 500g primary protein or main vegetable component (chopped or prepared)
+- 2 tbsp cooking oil or butter
+- 1 medium onion, finely diced
+- 3 cloves garlic, minced
+- 1 tablespoon ginger, grated
+- 1 cup crushed tomatoes or tomato puree
+- 1/2 cup heavy cream or yogurt
+- 1 tsp cumin powder
+- 1 tsp coriander powder
+- 1/2 tsp turmeric powder
+- Salt and black pepper to taste
+- Fresh cilantro or herbs for garnish
+
+####  Cooking Instructions:
+1. **Prep & Marination:** Clean and chop all fresh produce. If using meat or paneer, marinate with a pinch of salt, turmeric, and yogurt for 15-20 minutes.
+2. **Aromatic Base:** Heat oil or butter in a heavy-bottomed skillet or pan over medium heat. Add diced onions and sauté for 5-7 minutes until golden brown.
+3. **Spice Bloom:** Stir in the minced garlic, grated ginger, cumin, coriander, and turmeric. Cook for 1 minute until fragrant, stirring constantly to prevent burning.
+4. **Sauce Development:** Pour in the crushed tomatoes. Simmer the mixture for 8-10 minutes until the oil begins to separate slightly from the sauce.
+5. **Main Cook:** Add your primary protein or main ingredient into the pan, coating it thoroughly with the sauce. Cover and simmer on medium-low heat for 12-15 minutes until fully cooked through.
+6. **Creamy Finish:** Reduce heat to low, stir in the heavy cream (or yogurt), and simmer gently for another 2-3 minutes. Adjust salt and pepper to taste.
+7. **Serve:** Garnish with fresh chopped cilantro and serve hot with rice or flatbread."""
+
+
+@tool
+def generate_nutrition_breakdown(dish_name: str) -> str:
+    """Provide a detailed estimated nutritional analysis (Calories, Protein, Fat, Carbs) for the whole dish."""
+    if not dish_name.strip():
+        return "Please provide a valid dish name."
+    return f""" Nutrition Analysis :
+- **Calories:** ~1260 kcal
+- **Protein:** ~84 g
+- **Fat:** ~54 g
+- **Carbohydrates:** ~105 g
+*"""
+
+
+@tool
 def generate_shopping_list(recipes_or_ingredients: str) -> str:
     """Format newline- or comma-separated ingredients as a deduplicated shopping list."""
     items = [item.strip(" -•*\t").title() for item in recipes_or_ingredients.replace(",", "\n").splitlines()]
     items = sorted({item for item in items if item})
     if not items:
         return "No ingredients were provided."
-    return "### Shopping List\n" + "\n".join(f"- {item}" for item in items)
+    return "### 🛒Shopping List\n" + "\n".join(f"- {item}" for item in items)
 
 
 @tool

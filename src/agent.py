@@ -16,6 +16,8 @@ from src.tools import (
     generate_shopping_list,
     calculate_bmi,
     nutrition_analysis,
+    generate_recipe_and_instructions,
+    generate_nutrition_breakdown,
 )
 
 load_dotenv()
@@ -53,6 +55,8 @@ def build_nutrition_agent():
         generate_shopping_list,
         calculate_bmi,
         nutrition_analysis,
+        generate_recipe_and_instructions,
+        generate_nutrition_breakdown,
     ]
 
     prompt = get_agent_prompt()
